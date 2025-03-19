@@ -1,0 +1,19 @@
+.landing-page {
+    text-align: center;
+    padding: 20px;
+  }
+  
+  .watch-display {
+    margin: 20px auto;
+    max-width: 500px;
+  }
+  
+  .pcb-image {
+    width: 100%;
+    height: auto;
+  }
+  
+  .enter-dashboard-btn {
+    padding: 12px 20px;
+    font-size: 18px;
+  }

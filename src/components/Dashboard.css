@@ -1,0 +1,17 @@
+.dashboard {
+    padding: 20px;
+  }
+  
+  .connection-section,
+  .controls-section,
+  .charts-section {
+    margin-bottom: 20px;
+  }
+  
+  .chart-container {
+    margin: 20px 0;
+  }
+  
+  .back-btn {
+    margin-bottom: 10px;
+  }
