@@ -1,19 +1,67 @@
+/* Overall container styling */
 .landing-page {
-    text-align: center;
-    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    background: #f8f8f8;
+    padding: 40px;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    color: #333;
   }
   
-  .watch-display {
-    margin: 20px auto;
-    max-width: 500px;
+  /* Header styling */
+  .landing-header {
+    text-align: center;
+    margin-bottom: 40px;
+  }
+  
+  .landing-header h1 {
+    font-size: 3rem;
+    margin-bottom: 10px;
+  }
+  
+  .tagline {
+    font-size: 1.2rem;
+    color: #777;
+  }
+  
+  /* Image container with subtle hover scaling */
+  .image-container {
+    margin: 20px 0;
+    max-width: 600px;
+    width: 100%;
+    transition: transform 0.3s ease;
+  }
+  
+  .image-container:hover {
+    transform: scale(1.02);
   }
   
   .pcb-image {
     width: 100%;
-    height: auto;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   }
   
+  /* Call-to-action button styling */
   .enter-dashboard-btn {
-    padding: 12px 20px;
-    font-size: 18px;
+    padding: 15px 30px;
+    font-size: 1.2rem;
+    font-weight: 600;
+    background: #333;
+    color: #fff;
+    border: none;
+    border-radius: 25px;
+    cursor: pointer;
+    transition: background 0.3s ease, transform 0.2s ease;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-top: 30px;
+  }
+  
+  .enter-dashboard-btn:hover {
+    background: #555;
+    transform: translateY(-2px);
   }

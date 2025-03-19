@@ -6,12 +6,14 @@ import './LandingPage.css';
 const LandingPage = () => {
   return (
     <div className="landing-page">
-      <h1>Welcome to Smartwatch Control</h1>
-      <div className="watch-display">
-        <img src={pcbDesign} alt="PCB Design" className="pcb-image" />
+      <header className="landing-header">
+        <h1>Smartwatch Control</h1>
+      </header>
+      <div className="image-container">
+        <img src={pcbDesign} alt="Smartwatch PCB" className="pcb-image" />
       </div>
       <Link to="/dashboard">
-        <button className="enter-dashboard-btn">Go to Dashboard</button>
+        <button className="enter-dashboard-btn">Enter Dashboard</button>
       </Link>
     </div>
   );
