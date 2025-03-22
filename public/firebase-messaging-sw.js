@@ -2,12 +2,14 @@ importScripts('https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js'
 importScripts('https://www.gstatic.com/firebasejs/9.22.0/firebase-messaging-compat.js');
 
 firebase.initializeApp({
-  apiKey: 'your-api-key',
-  authDomain: 'your-project-id.firebaseapp.com',
-  projectId: 'your-project-id',
-  messagingSenderId: 'your-messaging-sender-id',
-  appId: 'your-app-id'
+  apiKey: "AIzaSyANXlQahWUVoeNVU7FWefl5Lr5vwoGjmEk",
+  authDomain: "smartwatch-fc7cc.firebaseapp.com",
+  projectId: "smartwatch-fc7cc",
+  storageBucket: "smartwatch-fc7cc.firebasestorage.app",
+  messagingSenderId: "404258235404",
+  appId: "1:404258235404:web:bcb7daa1d0df2b8e03fa29"
 });
+
 
 const messaging = firebase.messaging();
 

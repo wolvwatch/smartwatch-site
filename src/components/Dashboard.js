@@ -54,19 +54,19 @@ const Dashboard = () => {
 
   const updateBackgroundColor = async (color) => {
     if (serialPort) {
-      await sendCommand(serialPort, `SET_BG_COLOR:${color}`);
+      await sendCommand(serialPort, '2');
     }
   };
 
   const updateStatisticsDisplay = async () => {
     if (serialPort) {
-      await sendCommand(serialPort, `TOGGLE_STATS_DISPLAY`);
+      await sendCommand(serialPort, 3);
     }
   };
 
   const enableNotifications = async () => {
     if (serialPort) {
-      await sendCommand(serialPort, `ENABLE_NOTIFICATIONS`);
+      await sendCommand(serialPort, 4);
     }
   };
 
