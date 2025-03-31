@@ -12,6 +12,10 @@ const Dashboard = () => {
 
   const [receivedData, setReceivedData] = useState("");
 
+  const [bgColor, setBgColor] = useState('#ff0000'); // for CMD:2
+  const [brightness, setBrightness] = useState('UP'); // for CMD:4
+  const [timeInput, setTimeInput] = useState('08/21/2025,12:30:00'); // for CMD:6
+
   // dummy data
   const [heartrateData] = useState({
     labels: ['1min', '2min', '3min', '4min', '5min'],
@@ -51,22 +55,39 @@ const Dashboard = () => {
       setSerialPort(port);
     }
   };
-
-  const updateBackgroundColor = async (color) => {
+  const toggleHeartRateDisplay = async () => {
     if (serialPort) {
-      await sendCommand(serialPort, '2');
+      await sendCommand(serialPort, 'CMD:1');
     }
   };
 
-  const updateStatisticsDisplay = async () => {
+  const changeBackgroundColor = async (hexColor) => {
     if (serialPort) {
-      await sendCommand(serialPort, 3);
+      await sendCommand(serialPort, `CMD:2:${hexColor}`);
     }
   };
 
-  const enableNotifications = async () => {
+  const toggleNotifications = async () => {
     if (serialPort) {
-      await sendCommand(serialPort, 4);
+      await sendCommand(serialPort, 'CMD:3');
+    }
+  };
+
+  const adjustBrightness = async (direction) => {
+    if (serialPort && (direction === 'UP' || direction === 'DOWN')) {
+      await sendCommand(serialPort, `CMD:4:${direction}`);
+    }
+  };
+
+  const toggleClockDisplay = async () => {
+    if (serialPort) {
+      await sendCommand(serialPort, 'CMD:5');
+    }
+  };
+
+  const setTime = async (timeString) => {
+    if (serialPort) {
+      await sendCommand(serialPort, `CMD:6:${timeString}`);
     }
   };
 
@@ -131,15 +152,65 @@ const Dashboard = () => {
         )}
       </div>
       <div className="controls-section">
-        <button onClick={() => updateBackgroundColor('#ff0000')}>
-          Set Background Color Red
+        {/* Command 1: Toggle Heart Rate Display */}
+        <button onClick={toggleHeartRateDisplay}>
+          Toggle Heart Rate Display
         </button>
-        <button onClick={updateStatisticsDisplay}>
-          Toggle Statistics Display
+        
+        {/* Command 2: Change Background Color */}
+        <div className="parameter-control">
+          <input 
+            id="bgColor"
+            type="color" 
+            className="control-input"
+            value={bgColor} 
+            onChange={(e) => setBgColor(e.target.value)}
+          />
+          <button onClick={() => changeBackgroundColor(bgColor)}>
+            Change Background Color
+          </button>
+        </div>
+        
+        {/* Command 3: Toggle Notifications */}
+        <button onClick={toggleNotifications}>
+          Toggle Notifications
         </button>
-        <button onClick={enableNotifications}>
-          Enable Notifications
+        
+        {/* Command 4: Adjust Brightness */}
+        <div className="parameter-control">
+          <select 
+            id="brightness"
+            className="control-input"
+            value={brightness} 
+            onChange={(e) => setBrightness(e.target.value)}
+          >
+            <option value="UP">Increase</option>
+            <option value="DOWN">Decrease</option>
+          </select>
+          <button onClick={() => adjustBrightness(brightness)}>
+            Adjust Brightness
+          </button>
+        </div>
+        
+        {/* Command 5: Toggle Clock Display */}
+        <button onClick={toggleClockDisplay}>
+          Toggle Clock Display
         </button>
+        
+        {/* Command 6: Set Time */}
+        <div className="parameter-control">
+          <input 
+            id="timeInput"
+            type="text" 
+            className="control-input"
+            placeholder="MM/DD/YYYY,HH:MIN:SEC" 
+            value={timeInput} 
+            onChange={(e) => setTimeInput(e.target.value)}
+          />
+          <button onClick={() => setTime(timeInput)}>
+            Set Time
+          </button>
+        </div>
       </div>
 
             {/* Display incoming serial data */}
