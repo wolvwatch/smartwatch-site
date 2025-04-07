@@ -857,15 +857,15 @@ const Dashboard = () => {
 
       <h2>Smartwatch Control Panel</h2>
       
-      {/* Toggle between old and new controls */}
-      <div style={{ marginBottom: '1rem' }}>
-        <label style={{ marginRight: '8px' }}>
+      {/* Control Mode Toggle */}
+      <div className="control-mode-toggle">
+        <label>
           <input 
             type="checkbox"
             checked={useOldControls}
             onChange={() => setUseOldControls(!useOldControls)}
           />
-          &nbsp;Use Old CMD Controls
+          Legacy CMD Controls
         </label>
       </div>
 

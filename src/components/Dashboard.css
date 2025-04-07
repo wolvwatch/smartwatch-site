@@ -691,35 +691,146 @@ h3 {
 /* Control Mode Toggle */
 .control-mode-toggle {
   display: flex;
+  align-items: center;
   justify-content: center;
-  gap: 20px;
+  gap: 15px;
   margin: 20px 0;
-  padding: 10px;
+  padding: 15px;
   background: var(--glass-effect);
   border-radius: 8px;
   border: 1px solid rgba(0, 255, 255, 0.1);
   box-shadow: var(--border-glow);
 }
 
-.mode-btn {
-  padding: 12px 24px;
-  background: transparent;
-  border: 2px solid var(--neon-cyan);
+.control-mode-toggle label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   color: var(--neon-cyan);
   font-family: var(--font-cyber);
   font-size: 16px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 1px;
-  border-radius: 4px;
+  cursor: pointer;
+  text-shadow: var(--text-glow);
+}
+
+.control-mode-toggle input[type="checkbox"] {
+  -webkit-appearance: none;
+  width: 50px;
+  height: 26px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 2px solid var(--neon-cyan);
+  border-radius: 13px;
+  position: relative;
   cursor: pointer;
   transition: all 0.3s ease;
+  box-shadow: 0 0 5px var(--neon-cyan);
+}
+
+.control-mode-toggle input[type="checkbox"]::before {
+  content: '';
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  background: var(--neon-cyan);
+  border-radius: 50%;
+  top: 1px;
+  left: 1px;
+  transition: all 0.3s ease;
+  box-shadow: 0 0 5px var(--neon-cyan);
+}
+
+.control-mode-toggle input[type="checkbox"]:checked {
+  background: rgba(0, 255, 255, 0.1);
+}
+
+.control-mode-toggle input[type="checkbox"]:checked::before {
+  transform: translateX(24px);
+  background: var(--neon-magenta);
+  box-shadow: 0 0 5px var(--neon-magenta);
+}
+
+.control-mode-toggle input[type="checkbox"]:hover {
+  box-shadow: 0 0 10px var(--neon-cyan);
+}
+
+.control-mode-toggle input[type="checkbox"]:checked:hover {
+  box-shadow: 0 0 10px var(--neon-magenta);
+}
+
+/* Legacy Controls Section */
+.controls-section {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 25px;
+  padding: 25px;
+  background: var(--glass-effect);
+  border-radius: 12px;
+  border: 1px solid rgba(0, 255, 255, 0.1);
+  box-shadow: var(--border-glow);
+  margin: 20px 0;
   position: relative;
   overflow: hidden;
 }
 
-.mode-btn::before {
-  content: '';
+.controls-section::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(45deg, rgba(0,255,255,0.05) 25%, transparent 25%, transparent 50%, rgba(0,255,255,0.05) 50%, rgba(0,255,255,0.05) 75%, transparent 75%, transparent);
+  background-size: 4px 4px;
+  opacity: 0.1;
+  pointer-events: none;
+}
+
+.controls-section h3 {
+  grid-column: 1 / -1;
+  font-size: 24px;
+  color: var(--neon-cyan);
+  margin-bottom: 20px;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  text-shadow: var(--text-glow);
+  position: relative;
+  padding-bottom: 10px;
+}
+
+.controls-section h3::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 25%;
+  width: 50%;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(0,255,255,0), var(--neon-cyan), rgba(0,255,255,0));
+}
+
+.controls-section button {
+  padding: 12px 24px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 2px solid var(--neon-cyan);
+  color: var(--neon-cyan);
+  font-family: var(--font-cyber);
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 0 5px var(--neon-cyan);
+}
+
+.controls-section button::before {
+  content: "";
   position: absolute;
   top: 0;
   left: -100%;
@@ -729,67 +840,102 @@ h3 {
   transition: 0.5s;
 }
 
-.mode-btn:hover::before {
+.controls-section button:hover::before {
   left: 100%;
 }
 
-.mode-btn.active {
+.controls-section button:hover {
   background: rgba(0, 255, 255, 0.1);
   box-shadow: 0 0 15px var(--neon-cyan);
+  transform: translateY(-2px);
 }
 
-/* Old Controls Styling */
-.controls-section {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 20px;
-  padding: 20px;
-  background: var(--glass-effect);
-  border-radius: 8px;
-  border: 1px solid rgba(0, 255, 255, 0.1);
-  box-shadow: var(--border-glow);
-  margin: 20px 0;
-}
-
-.command-btn {
-  padding: 12px 24px;
-  background: transparent;
-  border: 2px solid var(--neon-cyan);
-  color: var(--neon-cyan);
-  font-family: var(--font-cyber);
-  font-size: 14px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  position: relative;
-  overflow: hidden;
-}
-
-.command-btn:hover {
-  background: rgba(0, 255, 255, 0.1);
-  box-shadow: 0 0 15px var(--neon-cyan);
-}
-
-.parameter-control {
+.controls-section .parameter-control {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
+  padding: 15px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  border: 1px solid rgba(0, 255, 255, 0.1);
+  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.3);
 }
 
-.control-input {
-  padding: 8px 12px;
-  background: rgba(0, 0, 0, 0.3);
+.controls-section .parameter-control label {
+  color: var(--neon-cyan);
+  font-size: 14px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  text-shadow: var(--text-glow);
+}
+
+.controls-section .control-input {
+  padding: 10px 15px;
+  background: rgba(0, 0, 0, 0.4);
   border: 1px solid rgba(0, 255, 255, 0.2);
   color: var(--neon-cyan);
   font-family: var(--font-cyber);
   border-radius: 4px;
   outline: none;
+  transition: all 0.3s ease;
 }
 
-.control-input:focus {
+.controls-section .control-input:focus {
   border-color: var(--neon-cyan);
   box-shadow: 0 0 10px rgba(0, 255, 255, 0.3);
+}
+
+.controls-section select {
+  padding: 10px 15px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(0, 255, 255, 0.2);
+  color: var(--neon-cyan);
+  font-family: var(--font-cyber);
+  border-radius: 4px;
+  outline: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.controls-section select:focus {
+  border-color: var(--neon-cyan);
+  box-shadow: 0 0 10px rgba(0, 255, 255, 0.3);
+}
+
+.controls-section input[type="color"] {
+  width: 100%;
+  height: 40px;
+  padding: 0;
+  border: 1px solid rgba(0, 255, 255, 0.2);
+  border-radius: 4px;
+  cursor: pointer;
+  background: none;
+}
+
+.controls-section input[type="color"]::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.controls-section input[type="color"]::-webkit-color-swatch {
+  border: none;
+  border-radius: 4px;
+}
+
+/* Responsive adjustments for legacy controls */
+@media (max-width: 768px) {
+  .controls-section {
+    grid-template-columns: 1fr;
+    padding: 15px;
+    gap: 15px;
+  }
+  
+  .controls-section button {
+    padding: 10px 20px;
+    font-size: 13px;
+  }
+  
+  .controls-section .parameter-control {
+    padding: 12px;
+  }
 }
