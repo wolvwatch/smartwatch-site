@@ -1,70 +1,83 @@
-# Getting Started with Create React App
+# Smartwatch Control Panel
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A modern React-based control panel for interfacing with your custom smartwatch via serial/Bluetooth communication.
 
-## Available Scripts
+## Overview
 
-In the project directory, you can run:
+This web application provides a comprehensive interface to control and monitor your smartwatch. It's organized into functional categories that match the smartwatch's command structure:
 
-### `npm start`
+1. **System Controls**: Get device info, battery status, and reboot
+2. **Screen Controls**: Adjust brightness, change watchfaces, and toggle screen
+3. **Apps**: Launch, close, and list available applications
+4. **Settings**: Configure timezone, units, and monitoring intervals
+5. **Sensors**: Read heart rate, SpO2, accelerometer, and temperature data
+6. **Time**: Set time and date on the device
+7. **Notifications**: Send text/call notifications and clear existing ones
+8. **Data Visualization**: View activity and sleep metrics
+9. **Communication Log**: Monitor raw data sent/received
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+## Command Structure
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+The control panel uses the following command structure to communicate with the smartwatch:
 
-### `npm test`
+- **SYS**: System commands
+  - `SYS:REBOOT` - Restart the device
+  - `SYS:INFO` - Get system information
+  - `SYS:BATT` - Get battery level
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+- **SCR**: Screen commands
+  - `SCR:BRIGHT:value` - Set brightness (0-100)
+  - `SCR:FACE:id` - Change watchface (0=Digital, 1=Analog)
+  - `SCR:ON` / `SCR:OFF` - Turn screen on/off
 
-### `npm run build`
+- **APP**: App management
+  - `APP:LAUNCH:id` - Launch app by ID
+  - `APP:CLOSE` - Close current app
+  - `APP:LIST` - Get list of available apps
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+- **SET**: Settings
+  - `SET:TIMEZONE:value` - Set timezone (UTC offset)
+  - `SET:UNITS:METRIC/IMPERIAL` - Set unit system
+  - `SET:HR_INTERVAL:value` - Set heart rate monitoring interval
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+- **SENS**: Sensor controls
+  - `SENS:HR` - Get heart rate
+  - `SENS:SPO2` - Get blood oxygen level
+  - `SENS:ACCEL` - Get accelerometer data
+  - `SENS:TEMP` - Get temperature
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+- **TIME**: Time settings
+  - `TIME:SET:hh:mm:ss` - Set time
+  - `TIME:DATE:yyyy-mm-dd` - Set date
+  - `TIME:GET` - Get current time
 
-### `npm run eject`
+- **NOTIF**: Notifications
+  - `NOTIF:TEXT:message` - Send text notification
+  - `NOTIF:CALL:name` - Send call notification
+  - `NOTIF:CLEAR` - Clear all notifications
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+## Response Format
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+The smartwatch sends responses in the following formats:
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+- `OK:message` - Command executed successfully
+- `ERROR:message` - Command failed with error
+- `DATA:type:value` - Data response (e.g., sensor readings)
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+## Getting Started
 
-## Learn More
+1. Connect your smartwatch to your computer via USB/Bluetooth
+2. Launch the web application
+3. Click "Connect to Smartwatch" to establish serial connection
+4. Use the various tabs to control your device
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+## Development
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+This project uses:
+- React for the UI
+- Chart.js for data visualization
+- Web Serial API for device communication
 
-### Code Splitting
+## License
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+MIT License
