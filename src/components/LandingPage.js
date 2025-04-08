@@ -1,6 +1,8 @@
+// landingpage.js
 import React from 'react';
 import { Link } from 'react-router-dom';
 import './LandingPage.css';
+import PCBModel from './PCBModel';
 
 const LandingPage = () => {
   return (
@@ -11,6 +13,9 @@ const LandingPage = () => {
         <h1 className="glitch-text">WOLV WATCH</h1>
         <div className="subtitle">EECS 373 - Embedded System Design</div>
       </header>
+      <div className="model-section">
+        <PCBModel />
+      </div>
 
       <div className="team-section">
         <h2>TEAM 13</h2>

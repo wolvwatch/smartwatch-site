@@ -249,6 +249,20 @@
   transition: 0.5s;
 }
 
+.model-section {
+  width: 100%;
+  max-width: 1000px;
+  height: 500px;
+  margin: 40px auto;
+  padding: 10px;
+  background: var(--glass-effect);
+  border: 2px solid var(--neon-cyan);
+  border-radius: 10px;
+  box-shadow: var(--border-glow);
+  position: relative;
+  overflow: hidden;
+}
+
 .cta-button:hover .button-glow {
   left: 100%;
 }
@@ -340,4 +354,5 @@
   .member-role {
     font-size: 14px;
   }
+
 }
