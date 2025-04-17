@@ -3,7 +3,10 @@ import { Line, Bar } from 'react-chartjs-2';
 import { connectToSmartwatch, sendCommand } from '../services/bluetoothService';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Tooltip, Legend } from 'chart.js';
 import { Link } from 'react-router-dom';
+import { storeSensorData, getAllSensorData, deleteAllSensorData } from '../firebaseInit';
 import './Dashboard.css';
+import { doc, setDoc } from 'firebase/firestore';
+import { db } from '../firebaseInit';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Tooltip, Legend);
 
@@ -97,7 +100,7 @@ const Dashboard = () => {
   const [callerName, setCallerName] = useState('');
   
   // ----- Sample chart data (used by both old & new UI) -----
-  const [heartrateData] = useState({
+  const [heartrateData, setHeartrateData] = useState({
     labels: ['1min', '2min', '3min', '4min', '5min'],
     datasets: [{
       label: 'Heart Rate',
@@ -128,6 +131,239 @@ const Dashboard = () => {
       ]
     }]
   });
+
+  // Add new state for Firebase data
+  const [firebaseData, setFirebaseData] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Add new state for sensor data charts
+  const [heartRateChartData, setHeartRateChartData] = useState({
+    labels: [],
+    datasets: [{
+      label: 'Heart Rate (BPM)',
+      data: [],
+      borderColor: 'rgba(0, 255, 255, 1)', // Neon cyan
+      backgroundColor: 'rgba(0, 255, 255, 0.1)',
+      tension: 0.4,
+      borderWidth: 2,
+      pointBackgroundColor: 'rgba(0, 255, 255, 1)',
+      pointBorderColor: '#000',
+      pointRadius: 4,
+      pointHoverRadius: 6
+    }]
+  });
+
+  const [stepsChartData, setStepsChartData] = useState({
+    labels: [],
+    datasets: [{
+      label: 'Steps',
+      data: [],
+      borderColor: 'rgba(255, 0, 255, 1)', // Neon magenta
+      backgroundColor: 'rgba(255, 0, 255, 0.1)',
+      tension: 0.4,
+      borderWidth: 2,
+      pointBackgroundColor: 'rgba(255, 0, 255, 1)',
+      pointBorderColor: '#000',
+      pointRadius: 4,
+      pointHoverRadius: 6
+    }]
+  });
+
+  const [spo2ChartData, setSpo2ChartData] = useState({
+    labels: [],
+    datasets: [{
+      label: 'SpO2 (%)',
+      data: [],
+      borderColor: 'rgba(255, 255, 0, 1)', // Neon yellow
+      backgroundColor: 'rgba(255, 255, 0, 0.1)',
+      tension: 0.4,
+      borderWidth: 2,
+      pointBackgroundColor: 'rgba(255, 255, 0, 1)',
+      pointBorderColor: '#000',
+      pointRadius: 4,
+      pointHoverRadius: 6
+    }]
+  });
+
+  // Common chart options for cyberpunk theme
+  const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'top',
+        labels: {
+          color: 'rgba(0, 255, 255, 1)',
+          font: {
+            family: "'Rajdhani', 'Orbitron', 'Share Tech Mono', monospace",
+            size: 14,
+            weight: 'bold'
+          }
+        }
+      },
+      title: {
+        display: true,
+        color: 'rgba(0, 255, 255, 1)',
+        font: {
+          family: "'Rajdhani', 'Orbitron', 'Share Tech Mono', monospace",
+          size: 16,
+          weight: 'bold'
+        }
+      }
+    },
+    scales: {
+      x: {
+        grid: {
+          color: 'rgba(0, 255, 255, 0.1)',
+          borderColor: 'rgba(0, 255, 255, 0.3)'
+        },
+        ticks: {
+          color: 'rgba(0, 255, 255, 0.8)',
+          font: {
+            family: "'Rajdhani', 'Orbitron', 'Share Tech Mono', monospace"
+          }
+        }
+      },
+      y: {
+        grid: {
+          color: 'rgba(0, 255, 255, 0.1)',
+          borderColor: 'rgba(0, 255, 255, 0.3)'
+        },
+        ticks: {
+          color: 'rgba(0, 255, 255, 0.8)',
+          font: {
+            family: "'Rajdhani', 'Orbitron', 'Share Tech Mono', monospace"
+          }
+        }
+      }
+    }
+  };
+
+  // Function to fetch data from Firebase
+  const fetchFirebaseData = async () => {
+    try {
+      setIsLoading(true);
+      const data = await getAllSensorData();
+      setFirebaseData(data);
+      
+      // Sort data by timestamp
+      const sortedData = [...data].sort((a, b) => 
+        new Date(a.timestamp) - new Date(b.timestamp)
+      );
+
+      // Get the last 24 hours of data
+      const last24Hours = sortedData.filter(d => 
+        new Date(d.timestamp) > new Date(Date.now() - 24 * 60 * 60 * 1000)
+      );
+
+      // Update heart rate chart
+      setHeartRateChartData({
+        labels: last24Hours.map(d => new Date(d.timestamp).toLocaleTimeString()),
+        datasets: [{
+          ...heartRateChartData.datasets[0],
+          data: last24Hours.map(d => d.heartrate || 0)
+        }]
+      });
+
+      // Update steps chart
+      setStepsChartData({
+        labels: last24Hours.map(d => new Date(d.timestamp).toLocaleTimeString()),
+        datasets: [{
+          ...stepsChartData.datasets[0],
+          data: last24Hours.map(d => d.steps || 0)
+        }]
+      });
+
+      // Update SpO2 chart
+      setSpo2ChartData({
+        labels: last24Hours.map(d => new Date(d.timestamp).toLocaleTimeString()),
+        datasets: [{
+          ...spo2ChartData.datasets[0],
+          data: last24Hours.map(d => d.spo2 || 0)
+        }]
+      });
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Function to reset all data
+  const handleResetData = async () => {
+    if (window.confirm('Are you sure you want to delete all sensor data?')) {
+      try {
+        setIsLoading(true);
+        await deleteAllSensorData();
+        setFirebaseData([]);
+        
+        // Reset charts to empty state
+        setHeartRateChartData({
+          labels: [],
+          datasets: [{
+            ...heartRateChartData.datasets[0],
+            data: []
+          }]
+        });
+        
+        setStepsChartData({
+          labels: [],
+          datasets: [{
+            ...stepsChartData.datasets[0],
+            data: []
+          }]
+        });
+        
+        setSpo2ChartData({
+          labels: [],
+          datasets: [{
+            ...spo2ChartData.datasets[0],
+            data: []
+          }]
+        });
+      } catch (error) {
+        console.error('Error resetting data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  };
+
+  // Add this function after the other state declarations
+  const generateRandomData = async () => {
+    try {
+      setIsLoading(true);
+      // Generate 24 hours of data points (one per hour)
+      const now = new Date();
+      const dataPoints = [];
+      
+      for (let i = 0; i < 24; i++) {
+        const timestamp = new Date(now.getTime() - (23 - i) * 60 * 60 * 1000);
+        
+        // Generate realistic values
+        const heartRate = Math.floor(Math.random() * 40) + 60; // 60-100 BPM
+        const steps = Math.floor(Math.random() * 1000) + 500; // 500-1500 steps per hour
+        const spo2 = Math.floor(Math.random() * 5) + 95; // 95-100% SpO2
+        
+        const data = {
+          timestamp: timestamp.toISOString(),
+          heartrate: heartRate,
+          steps: steps,
+          spo2: spo2
+        };
+        
+        // Store with timestamp as key
+        await setDoc(doc(db, 'sensorData', timestamp.toISOString()), data);
+      }
+      
+      // Refresh the data display
+      await fetchFirebaseData();
+    } catch (error) {
+      console.error('Error generating random data:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // ----- NEW MODE COMMANDS -----
   // Connect
@@ -292,6 +528,33 @@ const Dashboard = () => {
   
   // === Parsing new-mode data responses ===
   const processResponse = (text) => {
+    if (text.startsWith('DATA:')) {
+      const dataStr = text.substring(5);
+      const dataPairs = dataStr.split(',');
+      const sensorData = {};
+      
+      dataPairs.forEach(pair => {
+        const [key, value] = pair.split('=');
+        sensorData[key.toLowerCase()] = parseFloat(value);
+      });
+
+      // Add timestamp to the data
+      const timestamp = new Date().toISOString();
+      const dataWithTimestamp = {
+        ...sensorData,
+        timestamp: timestamp
+      };
+
+      // Store in Firebase with timestamp as key
+      storeSensorData(dataWithTimestamp)
+        .then(() => {
+          // Refresh the data display
+          fetchFirebaseData();
+        })
+        .catch(error => {
+          console.error('Error storing sensor data:', error);
+        });
+    }
     // If in old mode, we don't parse "DATA:" lines
     if (useOldControls) return;
 
@@ -354,12 +617,13 @@ const Dashboard = () => {
   useEffect(() => {
     if (!serialPort) return;
 
+    let reader;
     let cancel = false;
 
     const readFromPort = async () => {
       try {
         while (serialPort.readable && !cancel) {
-          const reader = serialPort.readable.getReader();
+          reader = serialPort.readable.getReader();
           try {
             while (true) {
               const { value, done } = await reader.read();
@@ -371,8 +635,6 @@ const Dashboard = () => {
                 const text = new TextDecoder().decode(value);
                 setReceivedData(prev => prev + text);
                 
-                // In "new" mode, parse the incoming lines
-                // In "old" mode, do no special parsing besides storing
                 const lines = text.split('\r\n');
                 for (const line of lines) {
                   if (line.trim()) {
@@ -386,7 +648,9 @@ const Dashboard = () => {
           } catch (err) {
             console.error("Reading error:", err);
           } finally {
-            reader.releaseLock();
+            if (reader) {
+              reader.releaseLock();
+            }
           }
         }
       } catch (error) {
@@ -398,6 +662,14 @@ const Dashboard = () => {
 
     return () => {
       cancel = true;
+      if (reader) {
+        reader.releaseLock();
+      }
+      if (serialPort) {
+        serialPort.close().catch(err => {
+          console.error("Error closing port:", err);
+        });
+      }
     };
   }, [serialPort, useOldControls]);
 
@@ -405,6 +677,13 @@ const Dashboard = () => {
     console.log("Dashboard mounted. Waiting for serial communication...");
   }, []);
   
+  // Add this useEffect after the other state declarations
+  useEffect(() => {
+    if (activeTab === 'data') {
+      fetchFirebaseData();
+    }
+  }, [activeTab]);
+
   // --------------------------------------------------------
   // RENDERING - OLD CONTROLS UI
   // --------------------------------------------------------
@@ -743,21 +1022,7 @@ const Dashboard = () => {
           );
           
         case 'data':
-          return (
-            <div className="tab-content">
-              <h3>Activity & Sleep Data</h3>
-              <div className="charts-section">
-                <div className="chart-container">
-                  <h3>Sleep Graph</h3>
-                  <Bar data={sleepData} />
-                </div>
-                <div className="chart-container">
-                  <h3>Activity Stats</h3>
-                  <Bar data={activityData} />
-                </div>
-              </div>
-            </div>
-          );
+          return renderDataTab();
           
         case 'log':
           return (
@@ -845,6 +1110,134 @@ const Dashboard = () => {
       </>
     );
   };
+
+  // Update the data tab content with themed charts
+  const renderDataTab = () => (
+    <div className="tab-content">
+      <h3>Sensor Data</h3>
+      <div className="data-controls">
+        <button 
+          onClick={handleResetData}
+          className="reset-button"
+          disabled={isLoading}
+        >
+          {isLoading ? 'Resetting...' : 'Reset All Data'}
+        </button>
+        <button 
+          onClick={generateRandomData}
+          className="generate-data-button"
+          disabled={isLoading}
+        >
+          {isLoading ? 'Generating...' : 'Generate Test Data'}
+        </button>
+      </div>
+      <div className="charts-section">
+        <div className="chart-container">
+          <h4>Heart Rate</h4>
+          <div className="chart-wrapper">
+            <Line 
+              data={heartRateChartData}
+              options={{
+                ...chartOptions,
+                plugins: {
+                  ...chartOptions.plugins,
+                  title: {
+                    ...chartOptions.plugins.title,
+                    text: 'Heart Rate Over Time'
+                  }
+                },
+                scales: {
+                  ...chartOptions.scales,
+                  y: {
+                    ...chartOptions.scales.y,
+                    beginAtZero: false,
+                    title: {
+                      display: true,
+                      text: 'BPM',
+                      color: 'rgba(0, 255, 255, 0.8)',
+                      font: {
+                        family: "'Rajdhani', 'Orbitron', 'Share Tech Mono', monospace"
+                      }
+                    }
+                  }
+                }
+              }}
+            />
+          </div>
+        </div>
+        
+        <div className="chart-container">
+          <h4>Steps</h4>
+          <div className="chart-wrapper">
+            <Line 
+              data={stepsChartData}
+              options={{
+                ...chartOptions,
+                plugins: {
+                  ...chartOptions.plugins,
+                  title: {
+                    ...chartOptions.plugins.title,
+                    text: 'Steps Over Time'
+                  }
+                },
+                scales: {
+                  ...chartOptions.scales,
+                  y: {
+                    ...chartOptions.scales.y,
+                    beginAtZero: true,
+                    title: {
+                      display: true,
+                      text: 'Steps',
+                      color: 'rgba(0, 255, 255, 0.8)',
+                      font: {
+                        family: "'Rajdhani', 'Orbitron', 'Share Tech Mono', monospace"
+                      }
+                    }
+                  }
+                }
+              }}
+            />
+          </div>
+        </div>
+        
+        <div className="chart-container">
+          <h4>SpO2</h4>
+          <div className="chart-wrapper">
+            <Line 
+              data={spo2ChartData}
+              options={{
+                ...chartOptions,
+                plugins: {
+                  ...chartOptions.plugins,
+                  title: {
+                    ...chartOptions.plugins.title,
+                    text: 'SpO2 Over Time'
+                  }
+                },
+                scales: {
+                  ...chartOptions.scales,
+                  y: {
+                    ...chartOptions.scales.y,
+                    beginAtZero: false,
+                    min: 90,
+                    max: 100,
+                    title: {
+                      display: true,
+                      text: '%',
+                      color: 'rgba(0, 255, 255, 0.8)',
+                      font: {
+                        family: "'Rajdhani', 'Orbitron', 'Share Tech Mono', monospace"
+                      }
+                    }
+                  }
+                }
+              }}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 
   // --------------------------------------------------------
   // MAIN RENDER
