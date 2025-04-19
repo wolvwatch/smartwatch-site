@@ -106,14 +106,13 @@ h3 {
 .connection-section {
   display: flex;
   align-items: center;
-  margin-bottom: 24px;
-  background-color: var(--panel-bg);
+  gap: 15px;
+  margin-bottom: 20px;
   padding: 15px;
+  background: rgba(0, 0, 0, 0.2);
   border-radius: 8px;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
   border: 1px solid rgba(0, 255, 255, 0.1);
-  position: relative;
-  overflow: hidden;
+  box-shadow: 0 0 10px rgba(0, 255, 255, 0.1);
 }
 
 .connection-section::before {
@@ -152,34 +151,68 @@ h3 {
 }
 
 .connected-btn {
-  background-color: rgba(0, 255, 100, 0.1) !important;
-  border-color: var(--neon-green) !important;
-  color: var(--neon-green) !important;
-  box-shadow: 0 0 5px var(--neon-green), 0 0 10px rgba(0, 255, 100, 0.4) !important;
-}
-
-.status-indicator {
-  padding: 8px 12px;
+  background-color: rgba(0, 255, 0, 0.1);
+  color: rgba(0, 255, 0, 1);
+  border: 1px solid rgba(0, 255, 0, 0.3);
+  padding: 10px 20px;
   border-radius: 4px;
-  font-weight: 600;
+  cursor: pointer;
+  font-family: 'Rajdhani', 'Orbitron', 'Share Tech Mono', monospace;
   font-size: 14px;
   text-transform: uppercase;
   letter-spacing: 1px;
-  font-family: var(--font-cyber);
+  transition: all 0.3s ease;
+  box-shadow: 0 0 5px rgba(0, 255, 0, 0.2);
 }
 
-.connected {
-  background-color: rgba(0, 255, 100, 0.1);
-  color: var(--neon-green);
-  border: 1px solid var(--neon-green);
-  box-shadow: 0 0 5px var(--neon-green);
+.connected-btn:hover:not(:disabled) {
+  background-color: rgba(0, 255, 0, 0.2);
+  box-shadow: 0 0 10px rgba(0, 255, 0, 0.4);
+  transform: translateY(-2px);
 }
 
-.not-connected {
-  background-color: rgba(255, 0, 100, 0.1);
-  color: #f36;
-  border: 1px solid #f36;
-  box-shadow: 0 0 5px #f36;
+.status-indicator {
+  padding: 8px 15px;
+  border-radius: 4px;
+  font-family: 'Rajdhani', 'Orbitron', 'Share Tech Mono', monospace;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  transition: all 0.3s ease;
+}
+
+.status-indicator.connected {
+  background-color: rgba(0, 255, 0, 0.1);
+  color: rgba(0, 255, 0, 1);
+  border: 1px solid rgba(0, 255, 0, 0.3);
+  box-shadow: 0 0 5px rgba(0, 255, 0, 0.2);
+}
+
+.status-indicator.connecting {
+  background-color: rgba(255, 255, 0, 0.1);
+  color: rgba(255, 255, 0, 1);
+  border: 1px solid rgba(255, 255, 0, 0.3);
+  box-shadow: 0 0 5px rgba(255, 255, 0, 0.2);
+  animation: pulse 2s infinite;
+}
+
+.status-indicator.not-connected {
+  background-color: rgba(255, 0, 0, 0.1);
+  color: rgba(255, 0, 0, 1);
+  border: 1px solid rgba(255, 0, 0, 0.3);
+  box-shadow: 0 0 5px rgba(255, 0, 0, 0.2);
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 1;
+  }
 }
 
 /* Dashboard Navigation */

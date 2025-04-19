@@ -239,6 +239,32 @@ const Dashboard = () => {
     }
   };
 
+  // Add these state variables after the other state declarations
+  const [isConnected, setIsConnected] = useState(false);
+  const [lastAckTime, setLastAckTime] = useState(0);
+  const [waitingForAck, setWaitingForAck] = useState(false);
+
+  // Add this function after the other state declarations
+  const sendAckRequest = async () => {
+    if (serialPort && !waitingForAck) {
+      try {
+        await sendCommand(serialPort, 'ACK:CONN');
+        setWaitingForAck(true);
+        setLastAckTime(Date.now());
+      } catch (error) {
+        console.error('Error sending ACK request:', error);
+      }
+    }
+  };
+
+  // Add this function to check for ACK timeout
+  const checkAckTimeout = () => {
+    if (waitingForAck && (Date.now() - lastAckTime > 30000)) { // 30 seconds timeout
+      setIsConnected(false);
+      setWaitingForAck(false);
+    }
+  };
+
   // Function to fetch data from Firebase
   const fetchFirebaseData = async () => {
     try {
@@ -371,6 +397,10 @@ const Dashboard = () => {
     const port = await connectToSmartwatch();
     if (port) {
       setSerialPort(port);
+      setIsConnected(false);
+      setWaitingForAck(false);
+      setLastAckTime(0);
+      
       // If we're in new mode, fetch some info automatically:
       if (!useOldControls) {
         setTimeout(() => {
@@ -528,6 +558,14 @@ const Dashboard = () => {
   
   // === Parsing new-mode data responses ===
   const processResponse = (text) => {
+    if (text.startsWith('ACK:OK')) {
+      if (waitingForAck) {
+        setIsConnected(true);
+        setWaitingForAck(false);
+      }
+      return;
+    }
+
     if (text.startsWith('DATA:')) {
       const dataStr = text.substring(5);
       const dataPairs = dataStr.split(',');
@@ -611,14 +649,14 @@ const Dashboard = () => {
     }
   };
 
-  // ---------------------------------
-  // PORT READING (COMMON)
-  // ---------------------------------
+  // Update the main useEffect for serial port reading
   useEffect(() => {
     if (!serialPort) return;
 
     let reader;
     let cancel = false;
+    let ackInterval;
+    let timeoutInterval;
 
     const readFromPort = async () => {
       try {
@@ -641,8 +679,6 @@ const Dashboard = () => {
                     processResponse(line.trim());
                   }
                 }
-
-                console.log("Received data:", text);
               }
             }
           } catch (err) {
@@ -658,12 +694,34 @@ const Dashboard = () => {
       }
     };
 
+    // Start reading from port
     readFromPort();
 
+    // Set up ACK intervals
+    if (serialPort) {
+      // Send initial ACK request
+      sendAckRequest();
+      
+      // Set up interval to send ACK requests every 25 seconds
+      ackInterval = setInterval(() => {
+        sendAckRequest();
+      }, 25000);
+      
+      // Set up interval to check for ACK timeout
+      timeoutInterval = setInterval(checkAckTimeout, 1000);
+    }
+
+    // Cleanup function
     return () => {
       cancel = true;
       if (reader) {
         reader.releaseLock();
+      }
+      if (ackInterval) {
+        clearInterval(ackInterval);
+      }
+      if (timeoutInterval) {
+        clearInterval(timeoutInterval);
       }
       if (serialPort) {
         serialPort.close().catch(err => {
@@ -671,7 +729,7 @@ const Dashboard = () => {
         });
       }
     };
-  }, [serialPort, useOldControls]);
+  }, [serialPort]);
 
   useEffect(() => {
     console.log("Dashboard mounted. Waiting for serial communication...");
@@ -1268,10 +1326,12 @@ const Dashboard = () => {
           onClick={handleConnect} 
           className={serialPort ? "connected-btn" : ""}
         >
-          {serialPort ? "Connected ✓" : "Connect to Smartwatch"}
+          {serialPort ? (isConnected ? "Connected ✓" : "Connecting...") : "Connect to Smartwatch"}
         </button>
         {serialPort ? (
-          <span className="status-indicator connected">Connected</span>
+          <span className={`status-indicator ${isConnected ? "connected" : "connecting"}`}>
+            {isConnected ? "Connected" : "Connecting..."}
+          </span>
         ) : (
           <span className="status-indicator not-connected">Not Connected</span>
         )}
