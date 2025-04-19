@@ -1,5 +1,5 @@
 /********************************************************************
- *  Dashboard.js – revised ACK / keep‑alive logic (April 2025)
+ *  Dashboard.js – revised ACK / keep‑alive logic (April 2025)
  *******************************************************************/
 import React, { useState, useEffect } from 'react';
 import { Line, Bar } from 'react-chartjs-2';
@@ -41,7 +41,7 @@ ChartJS.register(
 
 const ACK_REQ = 'ACK:CONN';
 const ACK_RESP = 'ACK:OK';
-const ACK_TIMEOUT_MS = 35_000;           // 35 s → “disconnected”
+const ACK_TIMEOUT_MS = 35_000;           // 35 s → "disconnected"
 
 export default function Dashboard() {
   /* ---------- toggles / generic state ---------- */
@@ -157,7 +157,7 @@ export default function Dashboard() {
     datasets: [{
       label: 'Steps',
       data: [],
-      borderColor: 'rgba(255, 0, 255, 1)', // Neon magenta
+      borderColor: 'rgba(255, 0, 255, 1)',
       backgroundColor: 'rgba(255, 0, 255, 0.1)',
       tension: 0.4,
       borderWidth: 2,
@@ -173,7 +173,7 @@ export default function Dashboard() {
     datasets: [{
       label: 'SpO2 (%)',
       data: [],
-      borderColor: 'rgba(255, 255, 0, 1)', // Neon yellow
+      borderColor: 'rgba(255, 255, 0, 1)',
       backgroundColor: 'rgba(255, 255, 0, 0.1)',
       tension: 0.4,
       borderWidth: 2,
@@ -246,17 +246,14 @@ export default function Dashboard() {
       const data = await getAllSensorData();
       setFirebaseData(data);
       
-      // Sort data by timestamp
       const sortedData = [...data].sort((a, b) => 
         new Date(a.timestamp) - new Date(b.timestamp)
       );
 
-      // Get the last 24 hours of data
       const last24Hours = sortedData.filter(d => 
         new Date(d.timestamp) > new Date(Date.now() - 24 * 60 * 60 * 1000)
       );
 
-      // Update heart rate chart
       setHeartRateChartData({
         labels: last24Hours.map(d => new Date(d.timestamp).toLocaleTimeString()),
         datasets: [{
@@ -265,7 +262,6 @@ export default function Dashboard() {
         }]
       });
 
-      // Update steps chart
       setStepsChartData({
         labels: last24Hours.map(d => new Date(d.timestamp).toLocaleTimeString()),
         datasets: [{
@@ -274,7 +270,6 @@ export default function Dashboard() {
         }]
       });
 
-      // Update SpO2 chart
       setSpo2ChartData({
         labels: last24Hours.map(d => new Date(d.timestamp).toLocaleTimeString()),
         datasets: [{
@@ -297,7 +292,6 @@ export default function Dashboard() {
         await deleteAllSensorData();
         setFirebaseData([]);
         
-        // Reset charts to empty state
         setHeartRateChartData({
           labels: [],
           datasets: [{
@@ -329,21 +323,18 @@ export default function Dashboard() {
     }
   };
 
-  // Add this function after the other state declarations
   const generateRandomData = async () => {
     try {
       setIsLoading(true);
-      // Generate 24 hours of data points (one per hour)
       const now = new Date();
       const dataPoints = [];
       
       for (let i = 0; i < 24; i++) {
         const timestamp = new Date(now.getTime() - (23 - i) * 60 * 60 * 1000);
         
-        // Generate realistic values
-        const heartRate = Math.floor(Math.random() * 40) + 60; // 60-100 BPM
-        const steps = Math.floor(Math.random() * 1000) + 500; // 500-1500 steps per hour
-        const spo2 = Math.floor(Math.random() * 5) + 95; // 95-100% SpO2
+        const heartRate = Math.floor(Math.random() * 40) + 60;
+        const steps = Math.floor(Math.random() * 1000) + 500;
+        const spo2 = Math.floor(Math.random() * 5) + 95;
         
         const data = {
           timestamp: timestamp.toISOString(),
@@ -352,11 +343,9 @@ export default function Dashboard() {
           spo2: spo2
         };
         
-        // Store with timestamp as key
         await setDoc(doc(db, 'sensorData', timestamp.toISOString()), data);
       }
       
-      // Refresh the data display
       await fetchFirebaseData();
     } catch (error) {
       console.error('Error generating random data:', error);
@@ -539,7 +528,7 @@ export default function Dashboard() {
 
   const changeBackgroundColor_OLD = async (hexColor) => {
     if (serialPort) {
-      await sendCommand(serialPort, `CMD:2:${hexColor}`);    // <-- backticks here
+      await sendCommand(serialPort, `CMD:2:${hexColor}`);
     }
   };
 
@@ -551,7 +540,7 @@ export default function Dashboard() {
 
   const adjustBrightness_OLD = async (direction) => {
     if (serialPort && (direction === 'UP' || direction === 'DOWN')) {
-      await sendCommand(serialPort, `CMD:4:${direction}`);    // <-- backticks here
+      await sendCommand(serialPort, `CMD:4:${direction}`);
     }
   };
 
@@ -563,18 +552,14 @@ export default function Dashboard() {
 
   const setTime_OLD = async (timeString) => {
     if (serialPort) {
-      await sendCommand(serialPort, `CMD:6:${timeString}`);   // <-- backticks here
+      await sendCommand(serialPort, `CMD:6:${timeString}`);
     }
   };
-  
-  // === Parsing new-mode data responses ===
 
   const processResponse = async (line) => {
-    /* --- ACK handling --- */
     if (line === ACK_REQ)  { await replyAck(); markAlive(); return; }
     if (line === ACK_RESP) {               markAlive(); return; }
 
-    /* --- sensor bundle e.g. DATA:HR=... etc (unchanged) --- */
     if (line.startsWith('DATA:') && !useOldControls) {
       const pairs = line.slice(5).split(',');
       const obj = {}; pairs.forEach(p=>{
@@ -587,7 +572,6 @@ export default function Dashboard() {
       return;
     }
 
-    /* --- new‑mode single‑field responses (unchanged) --- */
     if (!useOldControls && line.startsWith('DATA:')) {
       const [, type, ...rest] = line.split(':');
       const value = rest.join(':').trim();
@@ -616,9 +600,6 @@ export default function Dashboard() {
     }
   };
 
-  /*****************************************************************
-   *  SERIAL PORT READER  (unchanged except no ACK interval)
-   *****************************************************************/
   useEffect(() => {
     if (!serialPort) return;
     let cancel = false;
@@ -641,48 +622,37 @@ export default function Dashboard() {
     })();
 
     return () => { cancel = true; reader && reader.releaseLock(); };
-  }, [serialPort]);   // eslint-disable-line react-hooks/exhaustive-deps
+  }, [serialPort]);
 
-  /*****************************************************************
-   *  HEARTBEAT TIMEOUT WATCHER
-   *****************************************************************/
   useEffect(() => {
     if (!serialPort) return;
     const id = setInterval(() => {
-      if (!isConnected) sendCommand(serialPort, ACK_REQ);      // <‑‑ NEW
+      if (!isConnected) sendCommand(serialPort, ACK_REQ);
       else if (Date.now() - lastAckTime > (ACK_TIMEOUT_MS - 5000))
-        sendCommand(serialPort, ACK_REQ);                      // <‑‑ ping again
+        sendCommand(serialPort, ACK_REQ);
     }, 5000);
     return () => clearInterval(id);
   }, [serialPort, isConnected, lastAckTime]);
 
-
-
   useEffect(() => {
     console.log("Dashboard mounted. Waiting for serial communication...");
   }, []);
-  
-  // Add this useEffect after the other state declarations
+
   useEffect(() => {
     if (activeTab === 'data') {
       fetchFirebaseData();
     }
   }, [activeTab]);
 
-  // --------------------------------------------------------
-  // RENDERING - OLD CONTROLS UI
-  // --------------------------------------------------------
   const renderOldControlsUI = () => {
     return (
       <div className="controls-section">
         <h3>Legacy CMD Controls</h3>
         
-        {/* CMD:1 Toggle Heart Rate Display */}
         <button onClick={toggleHeartRateDisplay_OLD}>
           Toggle Heart Rate Display (CMD:1)
         </button>
         
-        {/* CMD:2 Change Background Color */}
         <div className="parameter-control">
           <label>Background Color (CMD:2): </label>
           <input 
@@ -695,12 +665,10 @@ export default function Dashboard() {
           </button>
         </div>
         
-        {/* CMD:3 Toggle Notifications */}
         <button onClick={toggleNotifications_OLD}>
           Toggle Notifications (CMD:3)
         </button>
         
-        {/* CMD:4 Adjust Brightness */}
         <div className="parameter-control">
           <label>Brightness (CMD:4): </label>
           <select 
@@ -715,12 +683,10 @@ export default function Dashboard() {
           </button>
         </div>
         
-        {/* CMD:5 Toggle Clock Display */}
         <button onClick={toggleClockDisplay_OLD}>
           Toggle Clock Display (CMD:5)
         </button>
         
-        {/* CMD:6 Set Time */}
         <div className="parameter-control">
           <label>Set Time (CMD:6): </label>
           <input 
@@ -737,11 +703,7 @@ export default function Dashboard() {
     );
   };
 
-  // --------------------------------------------------------
-  // RENDERING - NEW CONTROLS UI (TAB-BASED)
-  // --------------------------------------------------------
   const renderNewControlsUI = () => {
-    // tab content
     const renderTabContent = () => {
       switch (activeTab) {
         case 'system':
@@ -1096,7 +1058,6 @@ export default function Dashboard() {
     );
   };
 
-  // Update the data tab content with themed charts
   const renderDataTab = () => (
     <div className="tab-content">
       <h3>Sensor Data</h3>
@@ -1224,9 +1185,6 @@ export default function Dashboard() {
     </div>
   );
 
-  // --------------------------------------------------------
-  // MAIN RENDER
-  // --------------------------------------------------------
   return (
     <div className="dashboard">
       <Link to="/">
@@ -1235,7 +1193,6 @@ export default function Dashboard() {
 
       <h2>Smartwatch Control Panel</h2>
       
-      {/* Control Mode Toggle */}
       <div className="control-mode-toggle">
         <label>
           <input 
@@ -1247,7 +1204,6 @@ export default function Dashboard() {
         </label>
       </div>
 
-      {/* Connection section */}
       <div className="connection-section">
         <button 
           onClick={handleConnect} 
@@ -1264,11 +1220,8 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* Conditionally render old or new UI */}
       {useOldControls ? renderOldControlsUI() : renderNewControlsUI()}
 
-      {/* Shared charts (optional) – in old code we had them at the bottom. 
-          If you prefer to show them only in old mode, you can conditionally place them. */}
       {useOldControls && (
         <div className="charts-section">
           <div className="chart-container">
@@ -1286,7 +1239,6 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Show incoming data/log for old mode, but new mode has its own Log tab. */}
       {useOldControls && (
         <div className="incoming-data">
           <h4>Incoming Data</h4>
