@@ -1,114 +1,113 @@
+/********************************************************************
+ *  Dashboard.js – revised ACK / keep‑alive logic (April 2025)
+ *******************************************************************/
 import React, { useState, useEffect } from 'react';
 import { Line, Bar } from 'react-chartjs-2';
-import { connectToSmartwatch, sendCommand } from '../services/bluetoothService';
-import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Tooltip, Legend } from 'chart.js';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend
+} from 'chart.js';
 import { Link } from 'react-router-dom';
-import { storeSensorData, getAllSensorData, deleteAllSensorData } from '../firebaseInit';
-import './Dashboard.css';
+import {
+  connectToSmartwatch,
+  sendCommand
+} from '../services/bluetoothService';
+import {
+  storeSensorData,
+  getAllSensorData,
+  deleteAllSensorData,
+  db
+} from '../firebaseInit';
 import { doc, setDoc } from 'firebase/firestore';
-import { db } from '../firebaseInit';
+import './Dashboard.css';
 
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Tooltip, Legend);
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend
+);
 
-const Dashboard = () => {
-  // -- TOGGLE STATE --
+const ACK_REQ = 'ACK:CONN';
+const ACK_RESP = 'ACK:OK';
+const ACK_TIMEOUT_MS = 35_000;           // 35 s → “disconnected”
+
+export default function Dashboard() {
+  /* ---------- toggles / generic state ---------- */
   const [useOldControls, setUseOldControls] = useState(false);
-
-  // -- COMMON STATE --
   const [serialPort, setSerialPort] = useState(null);
-  const [receivedData, setReceivedData] = useState("");
+  const [receivedData, setReceivedData] = useState('');
 
-  // ---------------------------------
-  // OLD CONTROLS STATE & COMMANDS
-  // ---------------------------------
-  const [bgColor, setBgColor] = useState('#ff0000'); 
-  const [brightnessCMD, setBrightnessCMD] = useState('UP'); 
-  const [timeInputCMD, setTimeInputCMD] = useState('08/21/2025,12:30:00');
+  /* ---------- connection / heartbeat ----------- */
+  const [isConnected, setIsConnected]   = useState(false);
+  const [lastAckTime, setLastAckTime]   = useState(0);
 
-  const toggleHeartRateDisplay_OLD = async () => {
-    if (serialPort) {
-      await sendCommand(serialPort, 'CMD:1');
-    }
+  const markAlive = () => {
+    setIsConnected(true);
+    setLastAckTime(Date.now());
   };
 
-  const changeBackgroundColor_OLD = async (hexColor) => {
-    if (serialPort) {
-      await sendCommand(serialPort, `CMD:2:${hexColor}`);
-    }
+  const replyAck = async () => {
+    if (serialPort) await sendCommand(serialPort, ACK_RESP);
   };
 
-  const toggleNotifications_OLD = async () => {
-    if (serialPort) {
-      await sendCommand(serialPort, 'CMD:3');
-    }
-  };
+  /* ---------- legacy‑CMD UI state -------------- */
+  const [bgColor, setBgColor]             = useState('#ff0000');
+  const [brightnessCMD, setBrightnessCMD] = useState('UP');
+  const [timeInputCMD, setTimeInputCMD]   = useState('08/21/2025,12:30:00');
 
-  const adjustBrightness_OLD = async (direction) => {
-    if (serialPort && (direction === 'UP' || direction === 'DOWN')) {
-      await sendCommand(serialPort, `CMD:4:${direction}`);
-    }
-  };
-
-  const toggleClockDisplay_OLD = async () => {
-    if (serialPort) {
-      await sendCommand(serialPort, 'CMD:5');
-    }
-  };
-
-  const setTime_OLD = async (timeString) => {
-    if (serialPort) {
-      await sendCommand(serialPort, `CMD:6:${timeString}`);
-    }
-  };
-
-  // ---------------------------------
-  // NEW CONTROLS STATE & COMMANDS
-  // ---------------------------------
+  /* ---------- new‑UI state (lots!) ------------- */
   const [activeTab, setActiveTab] = useState('system');
-  
-  // System state
-  const [systemInfo, setSystemInfo] = useState(null);
+
+  // System
+  const [systemInfo,   setSystemInfo]   = useState(null);
   const [batteryLevel, setBatteryLevel] = useState(null);
-  
-  // Screen state
-  const [brightness, setBrightness] = useState(50);
+
+  // Screen
+  const [brightness, setBrightness]           = useState(50);
   const [selectedWatchface, setSelectedWatchface] = useState(0);
-  
-  // App state
-  const [appList, setAppList] = useState([]);
+
+  // Apps
+  const [appList, setAppList]   = useState([]);
   const [selectedApp, setSelectedApp] = useState(0);
-  
-  // Settings state
-  const [timezone, setTimezone] = useState(0);
-  const [units, setUnits] = useState('METRIC');
+
+  // Settings
+  const [timezone,   setTimezone]   = useState(0);
+  const [units,      setUnits]      = useState('METRIC');
   const [hrInterval, setHrInterval] = useState(15);
-  
-  // Sensor state
+
+  // Sensors
   const [sensorData, setSensorData] = useState({
-    heartRate: null,
-    spo2: null,
-    accel: null,
-    temp: null
+    heartRate: null, spo2: null, accel: null, temp: null
   });
-  
-  // Time state
-  const [timeValue, setTimeValue] = useState('12:30:00');
-  const [dateValue, setDateValue] = useState('2025-08-21');
-  
-  // Notification state
+
+  // Time & notif
+  const [timeValue,  setTimeValue]  = useState('12:30:00');
+  const [dateValue,  setDateValue]  = useState('2025-08-21');
   const [notificationText, setNotificationText] = useState('');
-  const [callerName, setCallerName] = useState('');
+  const [callerName,       setCallerName]       = useState('');
+
+  /* ---------- chart state (sample and live) ---- */
+  const [heartrateData, setHeartrateData] = useState({
+    labels: ['1min','2min','3min','4min','5min'],
+    datasets:[{ label:'Heart Rate',
+      data:[72,75,73,78,76],
+      borderColor:'rgba(255,99,132,1)',
+      backgroundColor:'rgba(255,99,132,0.2)'}]
+  });
   
   // ----- Sample chart data (used by both old & new UI) -----
-  const [heartrateData, setHeartrateData] = useState({
-    labels: ['1min', '2min', '3min', '4min', '5min'],
-    datasets: [{
-      label: 'Heart Rate',
-      data: [72, 75, 73, 78, 76],
-      borderColor: 'rgba(255, 99, 132, 1)',
-      backgroundColor: 'rgba(255, 99, 132, 0.2)',
-    }]
-  });
   
   const [sleepData] = useState({
     labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
@@ -239,31 +238,6 @@ const Dashboard = () => {
     }
   };
 
-  // Add these state variables after the other state declarations
-  const [isConnected, setIsConnected] = useState(false);
-  const [lastAckTime, setLastAckTime] = useState(0);
-  const [waitingForAck, setWaitingForAck] = useState(false);
-
-  // Add this function after the other state declarations
-  const sendAckRequest = async () => {
-    if (serialPort && !waitingForAck) {
-      try {
-        await sendCommand(serialPort, 'ACK:CONN');
-        setWaitingForAck(true);
-        setLastAckTime(Date.now());
-      } catch (error) {
-        console.error('Error sending ACK request:', error);
-      }
-    }
-  };
-
-  // Add this function to check for ACK timeout
-  const checkAckTimeout = () => {
-    if (waitingForAck && (Date.now() - lastAckTime > 30000)) { // 30 seconds timeout
-      setIsConnected(false);
-      setWaitingForAck(false);
-    }
-  };
 
   // Function to fetch data from Firebase
   const fetchFirebaseData = async () => {
@@ -395,20 +369,17 @@ const Dashboard = () => {
   // Connect
   const handleConnect = async () => {
     const port = await connectToSmartwatch();
-    if (port) {
-      setSerialPort(port);
-      setIsConnected(false);
-      setWaitingForAck(false);
-      setLastAckTime(0);
-      
-      // If we're in new mode, fetch some info automatically:
-      if (!useOldControls) {
-        setTimeout(() => {
-          getSystemInfo();
-          getBatteryLevel();
-          getAppList();
-        }, 1000);
-      }
+    if (!port) return;
+    setSerialPort(port);
+    setIsConnected(false);
+    setLastAckTime(Date.now());
+
+    if (!useOldControls) {
+      setTimeout(() => {
+        getSystemInfo();
+        getBatteryLevel();
+        getAppList();
+      }, 1000);
     }
   };
   
@@ -492,6 +463,8 @@ const Dashboard = () => {
       await sendCommand(serialPort, `SET:HR_INTERVAL:${hrInterval}`);
     }
   };
+
+  
   
   // === SENSOR COMMANDS (new) ===
   const getHeartRate = async () => {
@@ -555,181 +528,135 @@ const Dashboard = () => {
       await sendCommand(serialPort, 'NOTIF:CLEAR');
     }
   };
+
+  // old commands
+
+  const toggleHeartRateDisplay_OLD = async () => {
+    if (serialPort) {
+      await sendCommand(serialPort, 'CMD:1');
+    }
+  };
+
+  const changeBackgroundColor_OLD = async (hexColor) => {
+    if (serialPort) {
+      await sendCommand(serialPort, `CMD:2:${hexColor}`);    // <-- backticks here
+    }
+  };
+
+  const toggleNotifications_OLD = async () => {
+    if (serialPort) {
+      await sendCommand(serialPort, 'CMD:3');
+    }
+  };
+
+  const adjustBrightness_OLD = async (direction) => {
+    if (serialPort && (direction === 'UP' || direction === 'DOWN')) {
+      await sendCommand(serialPort, `CMD:4:${direction}`);    // <-- backticks here
+    }
+  };
+
+  const toggleClockDisplay_OLD = async () => {
+    if (serialPort) {
+      await sendCommand(serialPort, 'CMD:5');
+    }
+  };
+
+  const setTime_OLD = async (timeString) => {
+    if (serialPort) {
+      await sendCommand(serialPort, `CMD:6:${timeString}`);   // <-- backticks here
+    }
+  };
   
   // === Parsing new-mode data responses ===
-  const processResponse = (text) => {
-    if (text.startsWith('ACK:OK')) {
-      if (waitingForAck) {
-        setIsConnected(true);
-        setWaitingForAck(false);
-      }
+
+  const processResponse = async (line) => {
+    /* --- ACK handling --- */
+    if (line === ACK_REQ)  { await replyAck(); markAlive(); return; }
+    if (line === ACK_RESP) {               markAlive(); return; }
+
+    /* --- sensor bundle e.g. DATA:HR=... etc (unchanged) --- */
+    if (line.startsWith('DATA:') && !useOldControls) {
+      const pairs = line.slice(5).split(',');
+      const obj = {}; pairs.forEach(p=>{
+        const [k,v] = p.split('=');
+        obj[k.toLowerCase()] = parseFloat(v);
+      });
+      storeSensorData({ ...obj, timestamp:new Date().toISOString() })
+        .then(fetchFirebaseData)
+        .catch(e=>console.error('storeSensorData',e));
       return;
     }
 
-    if (text.startsWith('DATA:')) {
-      const dataStr = text.substring(5);
-      const dataPairs = dataStr.split(',');
-      const sensorData = {};
-      
-      dataPairs.forEach(pair => {
-        const [key, value] = pair.split('=');
-        sensorData[key.toLowerCase()] = parseFloat(value);
-      });
-
-      // Add timestamp to the data
-      const timestamp = new Date().toISOString();
-      const dataWithTimestamp = {
-        ...sensorData,
-        timestamp: timestamp
-      };
-
-      // Store in Firebase with timestamp as key
-      storeSensorData(dataWithTimestamp)
-        .then(() => {
-          // Refresh the data display
-          fetchFirebaseData();
-        })
-        .catch(error => {
-          console.error('Error storing sensor data:', error);
-        });
-    }
-    // If in old mode, we don't parse "DATA:" lines
-    if (useOldControls) return;
-
-    // Otherwise, parse the new format
-    if (text.startsWith('DATA:')) {
-      const parts = text.split(':');
-      if (parts.length >= 3) {
-        const dataType = parts[1];
-        const dataValue = parts.slice(2).join(':').trim();
-        
-        switch (dataType) {
-          case 'SYSINFO':
-            setSystemInfo(dataValue);
-            break;
-          case 'BATTERY':
-            setBatteryLevel(dataValue);
-            break;
-          case 'HR':
-            setSensorData(prev => ({ ...prev, heartRate: dataValue }));
-            break;
-          case 'SPO2':
-            setSensorData(prev => ({ ...prev, spo2: dataValue }));
-            break;
-          case 'ACCEL':
-            setSensorData(prev => ({ ...prev, accel: dataValue }));
-            break;
-          case 'TEMP':
-            setSensorData(prev => ({ ...prev, temp: dataValue }));
-            break;
-          case 'TIME':
-            // Parse time response
-            if (dataValue.includes(' ')) {
-              const [date, time] = dataValue.split(' ');
-              setDateValue(date);
-              setTimeValue(time);
-            }
-            break;
-          case 'APPLIST':
-            // Parse app list response, e.g. "0:Settings,1:Music"
-            try {
-              const apps = dataValue.split(',').map(app => {
-                const [id, name] = app.split(':');
-                return { id: parseInt(id), name };
-              });
-              setAppList(apps);
-            } catch (e) {
-              console.error('Error parsing app list:', e);
-            }
-            break;
-          default:
-            console.log(`Unhandled data type: ${dataType}`);
-        }
+    /* --- new‑mode single‑field responses (unchanged) --- */
+    if (!useOldControls && line.startsWith('DATA:')) {
+      const [, type, ...rest] = line.split(':');
+      const value = rest.join(':').trim();
+      switch (type) {
+        case 'SYSINFO': setSystemInfo(value);              break;
+        case 'BATTERY': setBatteryLevel(value);            break;
+        case 'HR':      setSensorData(p=>({...p,heartRate:value})); break;
+        case 'SPO2':    setSensorData(p=>({...p,spo2:value}));      break;
+        case 'ACCEL':   setSensorData(p=>({...p,accel:value}));     break;
+        case 'TEMP':    setSensorData(p=>({...p,temp:value}));      break;
+        case 'TIME':
+          if (value.includes(' ')) {
+            const [d,t] = value.split(' ');
+            setDateValue(d); setTimeValue(t);
+          }                                                break;
+        case 'APPLIST':
+          try {
+            setAppList(value.split(',').map(a=>{
+              const [id,name] = a.split(':');
+              return {id:+id, name};
+            }));
+          } catch(e){ console.error('APPLIST parse',e); }
+          break;
+        default: console.log('Unhandled', type);
       }
     }
   };
 
-  // Update the main useEffect for serial port reading
+  /*****************************************************************
+   *  SERIAL PORT READER  (unchanged except no ACK interval)
+   *****************************************************************/
   useEffect(() => {
     if (!serialPort) return;
-
-    let reader;
     let cancel = false;
-    let ackInterval;
-    let timeoutInterval;
+    let reader;
 
-    const readFromPort = async () => {
+    (async () => {
       try {
-        while (serialPort.readable && !cancel) {
-          reader = serialPort.readable.getReader();
-          try {
-            while (true) {
-              const { value, done } = await reader.read();
-              if (done) {
-                console.log("Reader closed");
-                break;
-              }
-              if (value) {
-                const text = new TextDecoder().decode(value);
-                setReceivedData(prev => prev + text);
-                
-                const lines = text.split('\r\n');
-                for (const line of lines) {
-                  if (line.trim()) {
-                    processResponse(line.trim());
-                  }
-                }
-              }
-            }
-          } catch (err) {
-            console.error("Reading error:", err);
-          } finally {
-            if (reader) {
-              reader.releaseLock();
-            }
+        reader = serialPort.readable.getReader();
+        while (!cancel) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          if (value) {
+            const txt = new TextDecoder().decode(value);
+            setReceivedData(prev => prev + txt);
+            txt.split(/\r?\n/).forEach(l => l && processResponse(l.trim()));
           }
         }
-      } catch (error) {
-        console.error("Error in readFromPort:", error);
-      }
-    };
+      } catch (err) { console.error('readFromPort', err); }
+      finally       { reader && reader.releaseLock(); }
+    })();
 
-    // Start reading from port
-    readFromPort();
+    return () => { cancel = true; reader && reader.releaseLock(); };
+  }, [serialPort]);   // eslint-disable-line react-hooks/exhaustive-deps
 
-    // Set up ACK intervals
-    if (serialPort) {
-      // Send initial ACK request
-      sendAckRequest();
-      
-      // Set up interval to send ACK requests every 25 seconds
-      ackInterval = setInterval(() => {
-        sendAckRequest();
-      }, 25000);
-      
-      // Set up interval to check for ACK timeout
-      timeoutInterval = setInterval(checkAckTimeout, 1000);
-    }
+  /*****************************************************************
+   *  HEARTBEAT TIMEOUT WATCHER
+   *****************************************************************/
+  useEffect(() => {
+    if (!serialPort) return;
+    const id = setInterval(() => {
+      if (Date.now() - lastAckTime > ACK_TIMEOUT_MS) {
+        setIsConnected(false);
+      }
+    }, 1000);
+    return () => clearInterval(id);
+  }, [serialPort, lastAckTime]);
 
-    // Cleanup function
-    return () => {
-      cancel = true;
-      if (reader) {
-        reader.releaseLock();
-      }
-      if (ackInterval) {
-        clearInterval(ackInterval);
-      }
-      if (timeoutInterval) {
-        clearInterval(timeoutInterval);
-      }
-      if (serialPort) {
-        serialPort.close().catch(err => {
-          console.error("Error closing port:", err);
-        });
-      }
-    };
-  }, [serialPort]);
+
 
   useEffect(() => {
     console.log("Dashboard mounted. Waiting for serial communication...");
@@ -1370,5 +1297,3 @@ const Dashboard = () => {
     </div>
   );
 };
-
-export default Dashboard;
