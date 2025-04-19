@@ -646,16 +646,15 @@ export default function Dashboard() {
   /*****************************************************************
    *  HEARTBEAT TIMEOUT WATCHER
    *****************************************************************/
-  if (serialPort && !isConnected) {
-    const pingId = setInterval(() => {
-      sendCommand(serialPort, ACK_REQ)
-        .then(() => console.debug('→ sent ACK request'))
-        .catch(err => console.error('failed sending ACK request', err));
-    }, 3000); // every 3 seconds (tweak to taste)
-
-    // stop pinging as soon as isConnected turns true, or on unmount
-    return () => clearInterval(pingId);
-  }
+  useEffect(() => {
+    if (!serialPort) return;
+    const id = setInterval(() => {
+      if (!isConnected) sendCommand(serialPort, ACK_REQ);      // <‑‑ NEW
+      else if (Date.now() - lastAckTime > (ACK_TIMEOUT_MS - 5000))
+        sendCommand(serialPort, ACK_REQ);                      // <‑‑ ping again
+    }, 5000);
+    return () => clearInterval(id);
+  }, [serialPort, isConnected, lastAckTime]);
 
 
 
