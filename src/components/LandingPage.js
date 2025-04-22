@@ -45,19 +45,19 @@ const LandingPage = () => {
           <div className="specs-grid">
             <div className="spec-item">
               <span className="spec-label">Processor</span>
-              <span className="spec-value">STM32</span>
+              <span className="spec-value">STM32 L4964RGTx</span>
             </div>
             <div className="spec-item">
               <span className="spec-label">Display</span>
-              <span className="spec-value">WAVESHARE</span>
+              <span className="spec-value">WAVESHARE 1.28 x 1.28in</span>
             </div>
             <div className="spec-item">
               <span className="spec-label">Battery</span>
-              <span className="spec-value">[BATTERY]</span>
+              <span className="spec-value">3.7V 300mAh LiPo</span>
             </div>
             <div className="spec-item">
               <span className="spec-label">Sensors</span>
-              <span className="spec-value">[Sensors]</span>
+              <span className="spec-value">MAX30102, ADX362, HC05</span>
             </div>
           </div>
         </div>

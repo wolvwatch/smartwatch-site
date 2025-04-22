@@ -43,6 +43,27 @@ const ACK_REQ = 'ACK:CONN';
 const ACK_RESP = 'ACK:OK';
 const ACK_TIMEOUT_MS = 35_000;           // 35 s → "disconnected"
 
+const ANN_ARBOR_COORDS = {
+  lat: 42.2808,
+  lon: -83.7430
+};
+
+const CONDITION_CODES = {
+  "1000": 0, // Clear, sunny
+  "1100": 1, // Mostly Clear
+  "1101": 1, // Partly Cloudy
+  "1102": 2, // Mostly Cloudy
+  "1001": 2, // Cloudy
+  "4000": 3, // Rain
+  "4001": 3, // Rain
+  "4200": 3, // Light Rain
+  "4201": 3, // Heavy Rain
+  "8000": 4, // Thunderstorm
+  "5000": 5, // Snow
+  "5100": 5, // Light Snow
+  "5101": 5  // Heavy Snow
+};
+
 export default function Dashboard() {
   /* ---------- toggles / generic state ---------- */
   const [useOldControls, setUseOldControls] = useState(false);
@@ -184,6 +205,9 @@ export default function Dashboard() {
     }]
   });
 
+  // Add new state for current face
+  const [currentFace, setCurrentFace] = useState(0);
+
   // Common chart options for cyberpunk theme
   const chartOptions = {
     responsive: true,
@@ -238,6 +262,48 @@ export default function Dashboard() {
     }
   };
 
+  const [weatherData, setWeatherData] = useState({
+    temp_current: 0,
+    temp_high: 0,
+    temp_low: 0,
+    humidity: 0,
+    condition: 0,
+    location: "Ann Arbor",
+    description: ""
+  });
+
+  const fetchWeather = async () => {
+    try {
+      const response = await fetch(
+        `https://api.tomorrow.io/v4/weather/realtime?location=${ANN_ARBOR_COORDS.lat},${ANN_ARBOR_COORDS.lon}&apikey=tjsziliot1trekx7pWCIwHWXn5joaKG7`
+      );
+      const realtimeData = await response.json();
+
+      const forecastResponse = await fetch(
+        `https://api.tomorrow.io/v4/weather/forecast?location=${ANN_ARBOR_COORDS.lat},${ANN_ARBOR_COORDS.lon}&apikey=tjsziliot1trekx7pWCIwHWXn5joaKG7`
+      );
+      const forecastData = await forecastResponse.json();
+
+      const today = forecastData.timelines.daily[0];
+      
+      setWeatherData({
+        temp_current: realtimeData.data.values.temperature,
+        temp_high: today.values.temperatureMax,
+        temp_low: today.values.temperatureMin,
+        humidity: Math.round(realtimeData.data.values.humidity),
+        condition: CONDITION_CODES[realtimeData.data.values.weatherCode] || 0,
+        location: "Ann Arbor",
+        description: realtimeData.data.values.weatherCode
+      });
+
+      if (serialPort) {
+        const weatherCmd = `WEATHER:${JSON.stringify(weatherData)}`;
+        await sendCommand(serialPort, weatherCmd);
+      }
+    } catch (error) {
+      console.error('Error fetching weather:', error);
+    }
+  };
 
   // Function to fetch data from Firebase
   const fetchFirebaseData = async () => {
@@ -489,7 +555,9 @@ export default function Dashboard() {
   
   const setTimeOnWatch = async () => {
     if (serialPort) {
-      await sendCommand(serialPort, `TIME:SET:${timeValue}`);
+      // Convert HH:MM:SS to HHMMSS
+      const timeWithoutColons = timeValue.replace(/:/g, '');
+      await sendCommand(serialPort, `TIME:SET:${timeWithoutColons}`);
     }
   };
   
@@ -558,7 +626,32 @@ export default function Dashboard() {
 
   const processResponse = async (line) => {
     if (line === ACK_REQ)  { await replyAck(); markAlive(); return; }
-    if (line === ACK_RESP) {               markAlive(); return; }
+    if (line === ACK_RESP) { markAlive(); return; }
+
+    // Handle current face updates
+    if (line.startsWith('current face: ')) {
+      const face = parseInt(line.split('current face: ')[1]);
+      if (!isNaN(face)) {
+        setCurrentFace(face);
+      }
+      return;
+    }
+
+    // Handle app list
+    if (line.startsWith('DATA:APPLIST:')) {
+      // 1. pull off the prefix
+      const payload = line.slice('DATA:APPLIST:'.length).trim();
+      // 2. in case there's any stray newline/colon at the very end
+      const clean = payload.replace(/[:\r\n]+$/, '');
+      // 3. split + trim, then map into objects
+      const apps = clean
+        .split(',')
+        .map(name => name.trim())
+        .filter(name => name.length > 0)
+        .map((name, idx) => ({ id: idx, name }));
+      setAppList(apps);
+      return;
+    }
 
     if (line.startsWith('DATA:') && !useOldControls) {
       const pairs = line.slice(5).split(',');
@@ -644,6 +737,12 @@ export default function Dashboard() {
     }
   }, [activeTab]);
 
+  useEffect(() => {
+    fetchWeather();
+    const interval = setInterval(fetchWeather, 15 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
+
   const renderOldControlsUI = () => {
     return (
       <div className="controls-section">
@@ -719,6 +818,7 @@ export default function Dashboard() {
                 {systemInfo && <div className="info-item"><span>System Info:</span> {systemInfo}</div>}
                 {batteryLevel && <div className="info-item"><span>Battery:</span> {batteryLevel}</div>}
               </div>
+              
             </div>
           );
           
@@ -786,6 +886,12 @@ export default function Dashboard() {
                 </div>
                 
                 <button onClick={closeApp} className="command-btn">Close Current App</button>
+
+                <div className="info-display" style={{ marginTop: '20px' }}>
+                  <div className="info-item">
+                    <span>Current App:</span> {appList[currentFace]?.name || `Unknown (${currentFace})`}
+                  </div>
+                </div>
               </div>
             </div>
           );
@@ -905,7 +1011,7 @@ export default function Dashboard() {
                 <button onClick={getCurrentTime} className="command-btn">Get Current Time</button>
                 
                 <div className="parameter-control">
-                  <label htmlFor="time-input">Set Time</label>
+                  <label htmlFor="time-input">Set Time (24h format)</label>
                   <input 
                     id="time-input"
                     type="time" 
@@ -914,6 +1020,9 @@ export default function Dashboard() {
                     value={timeValue} 
                     onChange={(e) => setTimeValue(e.target.value)}
                   />
+                  <div className="info-item" style={{ fontSize: '0.8em', marginTop: '5px' }}>
+                    Will be sent as: {timeValue.replace(/:/g, '')}
+                  </div>
                   <button onClick={setTimeOnWatch}>Set Time</button>
                 </div>
                 
@@ -964,6 +1073,42 @@ export default function Dashboard() {
                 </div>
                 
                 <button onClick={clearNotifications} className="command-btn">Clear All Notifications</button>
+              </div>
+            </div>
+          );
+          
+        case 'weather':
+          return (
+            <div className="tab-content">
+              <h3>Weather Information</h3>
+              <div className="weather-display" style={{ 
+                padding: '20px', 
+                backgroundColor: 'rgba(0,0,0,0.2)', 
+                borderRadius: '8px',
+                maxWidth: '500px',
+                margin: '0 auto'
+              }}>
+                <h4 style={{ marginBottom: '15px' }}>{weatherData.location} Weather</h4>
+                <div className="weather-info" style={{ 
+                  display: 'grid', 
+                  gridTemplateColumns: 'repeat(2, 1fr)',
+                  gap: '15px',
+                  fontSize: '1.1em'
+                }}>
+                  <div><strong>Current:</strong> {weatherData.temp_current}°C</div>
+                  <div><strong>High/Low:</strong> {weatherData.temp_high}°C / {weatherData.temp_low}°C</div>
+                  <div><strong>Humidity:</strong> {weatherData.humidity}%</div>
+                  <div><strong>Condition:</strong> {
+                    ['Sunny', 'Partly Cloudy', 'Cloudy', 'Rain', 'Storm', 'Snow'][weatherData.condition]
+                  }</div>
+                </div>
+                <button 
+                  onClick={fetchWeather} 
+                  className="command-btn"
+                  style={{ marginTop: '20px', width: '100%' }}
+                >
+                  Refresh Weather Data
+                </button>
               </div>
             </div>
           );
@@ -1024,6 +1169,12 @@ export default function Dashboard() {
             onClick={() => setActiveTab('sensors')}
           >
             Sensors
+          </button>
+          <button 
+            className={activeTab === 'weather' ? 'active' : ''} 
+            onClick={() => setActiveTab('weather')}
+          >
+            Weather
           </button>
           <button 
             className={activeTab === 'time' ? 'active' : ''} 
